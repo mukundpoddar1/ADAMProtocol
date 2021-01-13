@@ -1,0 +1,42 @@
+Probable issues:
+Thread Safety
+It can increase MTX multiple times if 6mp and mtx are greatly out of sync
+If a new tolerated has been set that may be below 100Dose, the calculations are still being done on 100% 
+It will never be able to consistently dose below the tolerated dose. Hence, if something got set as a tolerated dose erroneously, it will keep trying to give that.
+All decisions are being made in terms of number of days and not number of visits. Hence if there were no visits for a long time, system will not recognise that and can give wrong judgements.
+
+Tolerated Dose:
+Highest value that has been given to the patient for at least 6 weeks.
+Usage:
+reset to this after any decrease
+
+Hundred dose:
+BSA dose.
+Usage:
+every dose increase is 15% of this
+
+Last Dose:
+Whatever was given to the patient in their previous visit
+Usage:
+Decrease on this.
+
+Suggestions for future modifications on software front:
+Make a visit class that combines data about count and dose. Patient only has Vector of Visit then, which should be sortable by dates of visits. This way adding a visit asynchronously becomes possible.
+Convert dose class to only store percentages. Patient class will be in charge of making this % into an absolute.
+
+Requirements of system:
+Start date
+Bsa
+tolerated dose
+last 12 weeks: date, neutrophils, platelets, doses 
+
+Options to show for prescription:
+0, 50, 100, 125, 150, 175, Max tolerated
+
+Things to change for format:
+Remove times
+Convert to csv
+Sort by order of visits
+Ensure naming of file
+Fill in doses
+Fill in start dates
