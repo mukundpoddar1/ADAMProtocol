@@ -179,7 +179,7 @@ public class Patient implements Cloneable {
 	}
 
 	public boolean isDoseWithinSafeLimit(Dose dose) {
-		double percentageStep = Dose.STANDARD_INCREASE;
+		double percentageStep = Dose.STANDARD_INCREASE/100;
 		double smpPercentage = percentageStep
 				* Math.round(dose.getSmp() / getHunderedPercentDose().getSmp() / percentageStep);
 		double mtxPercentage = percentageStep
@@ -198,7 +198,7 @@ public class Patient implements Cloneable {
 		return currentDate;
 	}
 
-	public Dose increaseDoseByPercent(double smpPercent, double mtxPercent) {
+	public Dose calculateIncreasedDoseByPercent(double smpPercent, double mtxPercent) {
 		return this.getPreviousDose().multiplyByPercentage(100+smpPercent, 100+mtxPercent);
 	}
 

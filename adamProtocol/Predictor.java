@@ -39,7 +39,7 @@ public class Predictor {
 				setPredictionFor(Action.FIFTY_PERCENT);
 		}
 		else if (condition == BloodCounts.Condition.TARGET) {
-			if (checkCanDoseIncrease(condition))
+			if (checkCan6mpIncrease(condition))
 				setPredictionFor(Action.INCREASE_6MP);
 			else if (prevCondition.compareTo(BloodCounts.Condition.TARGET)<0) {
 				int visitsOfStopDose = getVisitsOfStopDose();
@@ -59,7 +59,7 @@ public class Predictor {
 				setPredictionFor(Action.MAX_OF_PREV_AND_TOLERATED);
 		}
 		else {
-			if (checkCanDoseIncrease(condition))
+			if (checkCan6mpIncrease(condition))
 				setPredictionFor(Action.INCREASE_6MP);
 			//Handle state for retrying to get to 100% dose and 3 weeks of stop dose
 			else if (prevCondition.compareTo(BloodCounts.Condition.TARGET)<0) {
@@ -163,7 +163,7 @@ public class Predictor {
 			prediction.addComments("Dose Change: CONTINUE SAME DOSE AS PREVIOUS");
 		}
 		else if (toDo == Action.INCREASE_6MP) {
-			Dose max = Dose.maximumOf(testCase.increaseDoseByPercent(Dose.STANDARD_INCREASE,0), fallbackDose);
+			Dose max = Dose.maximumOf(testCase.calculateIncreasedDoseByPercent(Dose.STANDARD_INCREASE,0), fallbackDose);
 			prediction.setDose(max);
 			prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
 			
@@ -173,13 +173,15 @@ public class Predictor {
 				prediction.addComments("Dose Change: INCREASE 6MP");
 		}
 		else if (toDo == Action.INCREASE_MTX) {
-			prediction.setDose(testCase.increaseDoseByPercent(0, Dose.STANDARD_INCREASE));
+			prediction.setDose(testCase.calculateIncreasedDoseByPercent(0, Dose.STANDARD_INCREASE));
 			prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
 			prediction.addComments("Dose Change: INCREASE MTX");
 		}
 	}
 	
-	private boolean checkCanDoseIncrease(BloodCounts.Condition condition) {
+	private boolean checkCan6mpIncrease(BloodCounts.Condition condition) {
+		if (!testCase.isDoseWithinSafeLimit(testCase.calculateIncreasedDoseByPercent(Dose.STANDARD_INCREASE,0)))
+			return false;
 		int noOfWeeksToWait;
 		if(condition == BloodCounts.Condition.TARGET)
 			noOfWeeksToWait = 8;
@@ -197,7 +199,7 @@ public class Predictor {
 			}
 		}
 		else if (condition == BloodCounts.Condition.HIGH) {
-			return checkCanDoseIncrease(BloodCounts.Condition.TARGET);
+			return checkCan6mpIncrease(BloodCounts.Condition.TARGET);
 		}
 		return false;
 	}
@@ -209,7 +211,7 @@ public class Predictor {
 		int daysSinceStart = testCase.getDaysSinceStart();
 		BloodCounts currentCounts = testCase.getBloodCountsAt(-1);
 		BloodCounts prevCounts = testCase.getBloodCountsAt(-2);
-		while (testCase.getDaysSinceStartAt(index)>daysSinceStart-6*WEEK) {
+		while (index >=0 && testCase.getDaysSinceStartAt(index)>daysSinceStart-6*WEEK) {
 			prevCounts  = testCase.getBloodCountsAt(index--);
 			if (currentCounts.compareTo(prevCounts) >= 0)
 				return false;
