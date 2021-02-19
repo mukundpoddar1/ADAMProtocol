@@ -6,6 +6,7 @@ import adamProtocol.Patient;
 import adamProtocol.Prediction;
 import adamProtocol.Predictor;
 import adamProtocol.exceptions.IndivisibleDoseException;
+import adamProtocol.exceptions.OutOfBoundsDoseException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -20,7 +21,7 @@ public class MainWindow extends javax.swing.JFrame {
     private final SimpleDateFormat dateFormatter;
     
     public MainWindow() {
-        dateFormatter = new SimpleDateFormat("dd-MM-yyyy");
+        dateFormatter = new SimpleDateFormat("dd/MM/yyyy");
         initComponents();
     }
 
@@ -196,8 +197,6 @@ public class MainWindow extends javax.swing.JFrame {
         jTextField4.setEditable(false);
 
         jTextField5.setEditable(false);
-
-        jLabel11.setText("jLabel11");
 
         javax.swing.GroupLayout lastDosePanelLayout = new javax.swing.GroupLayout(lastDosePanel);
         lastDosePanel.setLayout(lastDosePanelLayout);
@@ -405,8 +404,8 @@ public class MainWindow extends javax.swing.JFrame {
             Dose newDose = new Dose(Double.parseDouble(jTextField11.getText()), Double.parseDouble(jTextField10.getText()));
             patient.setCurrentDose(newDose);
             saveVisitToFile();
-        } catch (IndivisibleDoseException ex) {
-            Logger.getLogger(MainWindow.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IndivisibleDoseException | OutOfBoundsDoseException ex) {
+            JOptionPane.showMessageDialog(patientPanel, "Please check the dose suggested: "+ex.getMessage(), "Erroneous Dose Prescribed", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_saveButtonActionPerformed
 
@@ -486,7 +485,7 @@ public class MainWindow extends javax.swing.JFrame {
         if (patient.getNumberOfVisits() == 0) {
             return;
         }
-        jLabel11.setText(dateFormatter.format(patient.getLastVisitDate()) + " "+patient.getBloodCountsAt(-1).condition);
+        jLabel11.setText(dateFormatter.format(patient.getLastVisitDate()) + ", Condition: "+patient.getBloodCountsAt(-1).condition);
         jTextField4.setText(Double.toString(patient.getDoseAt(-1).getSmp()));
         jTextField5.setText(Double.toString(patient.getDoseAt(-1).getMtx()));
         jTextField8.setText(Double.toString(patient.getHunderedPercentDose().getSmp()));
