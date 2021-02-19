@@ -1,5 +1,6 @@
 package adamProtocol;
 
+import adamProtocol.exceptions.OutOfBoundsDoseException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -30,17 +31,12 @@ public class Patient implements Cloneable {
 		bsa=Math.sqrt(height * weight / 3600.0);
 		hunderedPercentDose=Dose.roundOff(bsa*20, bsa*60*7);
 		toleratedDose = null;
-
 		bloodCounts = new Vector<>();
 		weeklyDose = new Vector<>();
 		weeklyToleratedDose = new Vector<>();
 		daysSinceStart = new Vector<>();
 	}
 
-	// public Object clone() throws CloneNotSupportedException {
-	// return super.clone();
-	// }
-	//
 	@SuppressWarnings("unchecked")
 	@Override
 	public Patient clone() {
@@ -55,13 +51,18 @@ public class Patient implements Cloneable {
 
 		return dummy;
 	}
+        
+	public void addVisit(Date visitDate, BloodCounts bloodCounts) {
+		setCurrentDate(visitDate);
+		setCount(bloodCounts);
+	}
 
-	public void setCurrentDate(Date recordDate) {
+	private void setCurrentDate(Date recordDate) {
 		this.currentDate.setTime(recordDate);
 		this.setdaysSinceStart(recordDate);
 	}
 
-	public void setdaysSinceStart(Date recordDate) {
+	private void setdaysSinceStart(Date recordDate) {
 		Calendar date = new GregorianCalendar();
 		date.setTime(recordDate);
 		long current = date.getTimeInMillis();
@@ -71,19 +72,16 @@ public class Patient implements Cloneable {
 		this.daysSinceStart.addElement(days);
 	}
 
-	public void setCount(double anc, double plc) {
-		this.bloodCounts.addElement(new BloodCounts(anc, plc));
+	private void setCount(BloodCounts bloodCounts) {
+		this.bloodCounts.addElement(bloodCounts);
 		checkAndSetToleratedDose();
 
-		if (getToleratedDose() == null)
-			this.weeklyToleratedDose.addElement(null);
-		else
-			this.weeklyToleratedDose.addElement(getToleratedDose());
+		this.weeklyToleratedDose.addElement(getToleratedDose());
 	}
 
 	public void checkAndSetToleratedDose() {
-		if (this.getBloodCounts().condition.compareTo(BloodCounts.Condition.TARGET) >= 0
-				&& daysOfDoseTolerance() >= 6 * WEEK) {
+		if (this.getBloodCounts().condition.compareTo(BloodCounts.Condition.TARGET) >= 0 && 
+				daysOfDoseTolerance() >= 6 * WEEK) {
 			if (getToleratedDose() == null || getToleratedDose().compareTo(getPreviousDose()) < 0) {
 				setToleratedDose(getPreviousDose());
 			}
@@ -137,7 +135,7 @@ public class Patient implements Cloneable {
 	}
 
 	public int getDaysSinceStartAt(int index) {
-		return daysSinceStart.elementAt(index);
+		return daysSinceStart.elementAt(getVisitNumber(index));
 	}
 
 	public int getVisitNumber(int index) {
@@ -169,11 +167,11 @@ public class Patient implements Cloneable {
 		return week % 12 + 1;
 	}
 
-	public Dose setCurrentDose(Dose curr) {
-		//TODO
-		// if(!isDoseWithinSafeLimit(curr))
-		// 	curr = DisplayMessage.confirmDose("The current dose of "+curr+" is above safe-limit (" + Dose.SAFE_LIMIT +" times) of BSA");
-
+	public Dose setCurrentDose(Dose curr) throws OutOfBoundsDoseException {
+		if (!this.isDoseWithinSafeLimit(curr))
+			throw new OutOfBoundsDoseException(
+				"The current dose of " + curr + " is above safe-limit (" + Dose.SAFE_LIMIT + " times) of BSA");
+		
 		this.weeklyDose.addElement(curr);
 		return curr;
 	}
@@ -202,4 +200,7 @@ public class Patient implements Cloneable {
 		return this.getPreviousDose().multiplyByPercentage(100+smpPercent, 100+mtxPercent);
 	}
 
+    public Date getLastVisitDate() {
+        return new Date(this.startDate.getTimeInMillis() + TimeUnit.DAYS.toMillis(this.getDaysSinceStartAt(-1)));
+    }
 }

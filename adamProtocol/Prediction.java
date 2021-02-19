@@ -5,7 +5,6 @@ import java.util.Calendar;
 import adamProtocol.exceptions.OutOfBoundsDoseException;
 
 public class Prediction {
-
 	private Dose dose;
 	private String comments;
 	private Calendar appointmentDate;

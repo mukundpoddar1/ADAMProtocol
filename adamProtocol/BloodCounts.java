@@ -7,10 +7,12 @@ public class BloodCounts implements Comparable<BloodCounts>{
 		TARGET,
 		HIGH
 	}
-	public static final int BILLION = (int) Math.pow(10, 9);
+	public static final double BILLION = Math.pow(10, 9);
+	public static final double NEUTROPHIL_UNIT = BILLION/1000;
+	public static final double PLATELET_UNIT = BILLION;
 
 	public final double neutrophilCount, plateletCount;
-	final Condition condition;
+	public final Condition condition;
 	
 	public BloodCounts(double anc, double plc){
 		neutrophilCount = anc;
@@ -34,7 +36,7 @@ public class BloodCounts implements Comparable<BloodCounts>{
 		if (arg0 instanceof BloodCounts) {
 			BloodCounts bloodCounts2 = (BloodCounts) arg0;
 			return (this.neutrophilCount == bloodCounts2.neutrophilCount && 
-						this.plateletCount == bloodCounts2.plateletCount);
+					this.plateletCount == bloodCounts2.plateletCount);
 		}
 		return false;		
 	}
@@ -53,4 +55,3 @@ public class BloodCounts implements Comparable<BloodCounts>{
 		return false;
 	}
 }
-

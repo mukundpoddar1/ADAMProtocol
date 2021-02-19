@@ -7,14 +7,14 @@ import adamProtocol.exceptions.OutOfBoundsDoseException;
 public class Predictor {
 	
 	private static final int WEEK = 7;
-	private static final int THRESHOLD_FOR_NEUTROPHIL_DECLINE = 1 / 10 * BloodCounts.BILLION;
+	private static final double THRESHOLD_FOR_NEUTROPHIL_DECLINE = 1 / 10 * BloodCounts.BILLION;
 	Patient testCase;
 	Prediction prediction;
 		
 	enum Action {
 		STOP, FIFTY_PERCENT, SAME_AS_BEFORE, MAX_OF_PREV_AND_TOLERATED, MAINTAIN_COUNT, INCREASE_6MP, INCREASE_MTX
 	}
-	public Prediction predictFor(Patient testCase) throws OutOfBoundsDoseException {
+	public Prediction predictFor(Patient testCase) {
 		this.setPatient(testCase);
 		BloodCounts.Condition condition = testCase.getBloodCounts().condition;
 		if (testCase.getNumberOfVisits() == 1) {
@@ -38,40 +38,20 @@ public class Predictor {
 			else
 				setPredictionFor(Action.FIFTY_PERCENT);
 		}
-		else if (condition == BloodCounts.Condition.TARGET) {
-			if (checkCan6mpIncrease(condition))
-				setPredictionFor(Action.INCREASE_6MP);
-			else if (prevCondition.compareTo(BloodCounts.Condition.TARGET)<0) {
-				int visitsOfStopDose = getVisitsOfStopDose();
-				if (visitsOfStopDose > 0 && (visitsOfStopDose >= 3 || !canAttemptHunderedPercentDose()))
-					setPredictionFor(Action.FIFTY_PERCENT);
-				else 
-					setPredictionFor(Action.MAX_OF_PREV_AND_TOLERATED);
-			}
-			else if (testCase.getNumberOfVisits()>1 && (testCase.getPreviousDose().is6mpPercentGreaterThanmtxPercent(testCase.getHunderedPercentDose()))) {
-				if (daysSinceDoseIncrease() >= 4*WEEK){
-					setPredictionFor(Action.INCREASE_MTX);
-				}
-				else
-					setPredictionFor(Action.MAX_OF_PREV_AND_TOLERATED);
-			}
-			else
-				setPredictionFor(Action.MAX_OF_PREV_AND_TOLERATED);
-		}
 		else {
 			if (checkCan6mpIncrease(condition))
 				setPredictionFor(Action.INCREASE_6MP);
-			//Handle state for retrying to get to 100% dose and 3 weeks of stop dose
 			else if (prevCondition.compareTo(BloodCounts.Condition.TARGET)<0) {
-				int visitsOfStopDose = getVisitsOfStopDose();
-				if (visitsOfStopDose > 0 && (visitsOfStopDose >= 3 || !canAttemptHunderedPercentDose()))
-					setPredictionFor(Action.FIFTY_PERCENT);
-				else 
+				if (canAttemptHunderedPercentDose())
 					setPredictionFor(Action.MAX_OF_PREV_AND_TOLERATED);
+				else
+					setPredictionFor(Action.FIFTY_PERCENT);
 			}
-			else if (testCase.getNumberOfVisits()>1 && testCase.getPreviousDose().is6mpPercentGreaterThanmtxPercent(testCase.getHunderedPercentDose())) {
-				if (daysSinceDoseIncrease() >= 2*WEEK)
+			else if (testCase.getNumberOfVisits()>1 && (testCase.getPreviousDose().is6mpPercentGreaterThanmtxPercent(testCase.getHunderedPercentDose()))) {
+				int timeToWait = condition == BloodCounts.Condition.TARGET ? 4*WEEK : 2*WEEK;
+				if (daysSinceDoseIncrease() >= timeToWait){
 					setPredictionFor(Action.INCREASE_MTX);
+				}
 				else
 					setPredictionFor(Action.MAX_OF_PREV_AND_TOLERATED);
 			}
@@ -82,14 +62,19 @@ public class Predictor {
 	}
 	
 	private boolean canAttemptHunderedPercentDose() {
-		// If there have been two previous unsuccessful attempts to prescribe 100% dose,
-		// we do not wish to try again with the same dose
+		int visitsOfStopDose = getVisitsOfStopDose();
+		if (visitsOfStopDose == 0)
+			return true;
+		else if (visitsOfStopDose >= 3)
+			return false;
 
 		Dose hundredPercentDose = testCase.getHunderedPercentDose();
 		// If a tolerated dose exists, we do not need to worry about not reaching the hundred percent dose
 		if (testCase.getToleratedDose() != null && testCase.getToleratedDose().compareTo(hundredPercentDose)>=0)
 			return true;
 
+		// If there have been two previous unsuccessful attempts to prescribe 100% dose,
+		// we do not wish to try again with the same dose
 		int attempts = 0;
 		int visitNumber = testCase.getNumberOfVisits()-2;
 		while (visitNumber > 0) {
@@ -130,52 +115,57 @@ public class Predictor {
 		return days;
 	}
 
-	private void setPredictionFor(Action toDo) throws OutOfBoundsDoseException {
+	private void setPredictionFor(Action toDo) {
 		prediction.addComments("Action being taken: " + toDo);
 		Dose fallbackDose = (testCase.getToleratedDose() == null) ? testCase.getHunderedPercentDose() : testCase.getToleratedDose();
 		
-		if (toDo == Action.STOP) {
-			prediction.setDose(Dose.roundOff(0,0));
-			prediction.setAppointmentAfterDays(WEEK, (Calendar)testCase.getCurrentDate().clone());
-			prediction.addComments("Dose Change: STOP");
-		}
-		else if (toDo == Action.FIFTY_PERCENT) {
-			Dose max = Dose.maximumOf(testCase.getPreviousDose(), testCase.getHunderedPercentDose());
-			prediction.setDose(max.multiplyByPercentage(50, 50));
-			prediction.setAppointmentAfterDays(WEEK, (Calendar)testCase.getCurrentDate().clone());
-			prediction.addComments("Dose Change: REDUCE BY 50%");
-		}
-		else if (toDo == Action.SAME_AS_BEFORE) {
-			prediction.setDose(testCase.getPreviousDose());
-			prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
-			prediction.addComments("Dose Change: CONTINUE AS BEFORE");
-		}
-		else if (toDo == Action.MAX_OF_PREV_AND_TOLERATED) {
-			Dose max = Dose.maximumOf(testCase.getPreviousDose(), fallbackDose);
-			prediction.setDose(max);
-			prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
-			if (max.equals(fallbackDose) && !max.equals(testCase.getDoseAt(-2)))
-				prediction.addComments("Dose Change: DOSE RESET TO TOLERATED");
-		}
-		else if (toDo == Action.MAINTAIN_COUNT) {
-			prediction.setDose(fallbackDose);
-			prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
-			prediction.addComments("Dose Change: CONTINUE SAME DOSE AS PREVIOUS");
-		}
-		else if (toDo == Action.INCREASE_6MP) {
-			Dose max = Dose.maximumOf(testCase.calculateIncreasedDoseByPercent(Dose.STANDARD_INCREASE,0), fallbackDose);
-			prediction.setDose(max);
-			prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
-			
-			if (max.equals(fallbackDose))
-				prediction.addComments("Dose Change: DOSE RESET TO TOLERATED");
-			else
-				prediction.addComments("Dose Change: INCREASE 6MP");
-		}
-		else if (toDo == Action.INCREASE_MTX) {
-			prediction.setDose(testCase.calculateIncreasedDoseByPercent(0, Dose.STANDARD_INCREASE));
-			prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
-			prediction.addComments("Dose Change: INCREASE MTX");
+		try {
+			if (toDo == Action.STOP) {
+				prediction.setDose(Dose.roundOff(0,0));
+				prediction.setAppointmentAfterDays(WEEK, (Calendar)testCase.getCurrentDate().clone());
+				prediction.addComments("Dose Change: STOP");
+			}
+			else if (toDo == Action.FIFTY_PERCENT) {
+				Dose max = Dose.maximumOf(testCase.getPreviousDose(), testCase.getHunderedPercentDose());
+				prediction.setDose(max.multiplyByPercentage(50, 50));
+				prediction.setAppointmentAfterDays(WEEK, (Calendar)testCase.getCurrentDate().clone());
+				prediction.addComments("Dose Change: REDUCE BY 50%");
+			}
+			else if (toDo == Action.SAME_AS_BEFORE) {
+				prediction.setDose(testCase.getPreviousDose());
+				prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
+				prediction.addComments("Dose Change: CONTINUE AS BEFORE");
+			}
+			else if (toDo == Action.MAX_OF_PREV_AND_TOLERATED) {
+				Dose max = Dose.maximumOf(testCase.getPreviousDose(), fallbackDose);
+				prediction.setDose(max);
+				prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
+				if (max.equals(fallbackDose) && !max.equals(testCase.getDoseAt(-2)))
+					prediction.addComments("Dose Change: DOSE RESET TO TOLERATED");
+			}
+			else if (toDo == Action.MAINTAIN_COUNT) {
+				prediction.setDose(fallbackDose);
+				prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
+				prediction.addComments("Dose Change: CONTINUE SAME DOSE AS PREVIOUS");
+			}
+			else if (toDo == Action.INCREASE_6MP) {
+				Dose max = Dose.maximumOf(testCase.calculateIncreasedDoseByPercent(Dose.STANDARD_INCREASE,0), fallbackDose);
+				prediction.setDose(max);
+				prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
+
+				if (max.equals(fallbackDose))
+					prediction.addComments("Dose Change: DOSE RESET TO TOLERATED");
+				else
+					prediction.addComments("Dose Change: INCREASE 6MP");
+			}
+			else if (toDo == Action.INCREASE_MTX) {
+				prediction.setDose(testCase.calculateIncreasedDoseByPercent(0, Dose.STANDARD_INCREASE));
+				prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
+				prediction.addComments("Dose Change: INCREASE MTX");
+			}
+		} catch (OutOfBoundsDoseException ex) {
+			DisplayMessage.displayMessage("Unexpectedly the algorithm tried to set out of bounds dose");
+			ex.printStackTrace();
 		}
 	}
 	
