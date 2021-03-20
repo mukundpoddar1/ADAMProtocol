@@ -12,14 +12,14 @@ public class Predictor {
 	Prediction prediction;
 		
 	enum Action {
-		STOP, FIFTY_PERCENT, SAME_AS_BEFORE, MAX_OF_PREV_AND_TOLERATED, MAINTAIN_COUNT, INCREASE_6MP, INCREASE_MTX
+		STOP, FIFTY_PERCENT, SAME_AS_BEFORE, MAX_OF_PREV_AND_TOLERATED, FIRST_VISIT, INCREASE_6MP, INCREASE_MTX
 	}
 	public Prediction predictFor(Patient testCase) {
 		this.setPatient(testCase);
 		BloodCounts.Condition condition = testCase.getBloodCounts().condition;
 		if (testCase.getNumberOfVisits() == 1) {
 			if (condition.compareTo(BloodCounts.Condition.TARGET) >= 0) {
-				setPredictionFor(Action.MAINTAIN_COUNT);
+				setPredictionFor(Action.FIRST_VISIT);
 				return prediction;
 			}
 			else 
@@ -120,49 +120,55 @@ public class Predictor {
 		Dose fallbackDose = (testCase.getToleratedDose() == null) ? testCase.getHunderedPercentDose() : testCase.getToleratedDose();
 		
 		try {
-			if (toDo == Action.STOP) {
-				prediction.setDose(Dose.roundOff(0,0));
-				prediction.setAppointmentAfterDays(WEEK, (Calendar)testCase.getCurrentDate().clone());
-				prediction.addComments("Dose Change: STOP");
-			}
-			else if (toDo == Action.FIFTY_PERCENT) {
-				Dose max = Dose.maximumOf(testCase.getPreviousDose(), testCase.getHunderedPercentDose());
-				prediction.setDose(max.multiplyByPercentage(50, 50));
-				prediction.setAppointmentAfterDays(WEEK, (Calendar)testCase.getCurrentDate().clone());
-				prediction.addComments("Dose Change: REDUCE BY 50%");
-			}
-			else if (toDo == Action.SAME_AS_BEFORE) {
-				prediction.setDose(testCase.getPreviousDose());
-				prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
-				prediction.addComments("Dose Change: CONTINUE AS BEFORE");
-			}
-			else if (toDo == Action.MAX_OF_PREV_AND_TOLERATED) {
-				Dose max = Dose.maximumOf(testCase.getPreviousDose(), fallbackDose);
-				prediction.setDose(max);
-				prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
-				if (max.equals(fallbackDose) && !max.equals(testCase.getDoseAt(-2)))
-					prediction.addComments("Dose Change: DOSE RESET TO TOLERATED");
-			}
-			else if (toDo == Action.MAINTAIN_COUNT) {
-				prediction.setDose(fallbackDose);
-				prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
-				prediction.addComments("Dose Change: CONTINUE SAME DOSE AS PREVIOUS");
-			}
-			else if (toDo == Action.INCREASE_6MP) {
-				Dose max = Dose.maximumOf(testCase.calculateIncreasedDoseByPercent(Dose.STANDARD_INCREASE,0), fallbackDose);
-				prediction.setDose(max);
-				prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
-
-				if (max.equals(fallbackDose))
-					prediction.addComments("Dose Change: DOSE RESET TO TOLERATED");
-				else
-					prediction.addComments("Dose Change: INCREASE 6MP");
-			}
-			else if (toDo == Action.INCREASE_MTX) {
-				prediction.setDose(testCase.calculateIncreasedDoseByPercent(0, Dose.STANDARD_INCREASE));
-				prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
-				prediction.addComments("Dose Change: INCREASE MTX");
-			}
+			if (null != toDo) switch (toDo) {
+                        case FIRST_VISIT:
+                            prediction.setDose(fallbackDose);
+                            prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
+                            prediction.addComments("Dose Change: CONTINUE SAME DOSE AS PREVIOUS");
+                            break;
+                        case STOP:
+                            prediction.setDose(Dose.roundOff(0,0));
+                            prediction.setAppointmentAfterDays(WEEK, (Calendar)testCase.getCurrentDate().clone());
+                            prediction.addComments("Dose Change: STOP");
+                            break;
+                        case FIFTY_PERCENT:{
+                            Dose max = Dose.maximumOf(testCase.getPreviousDose(), testCase.getHunderedPercentDose());
+                            prediction.setDose(max.multiplyByPercentage(50, 50));
+                            prediction.setAppointmentAfterDays(WEEK, (Calendar)testCase.getCurrentDate().clone());
+                            prediction.addComments("Dose Change: REDUCE BY 50%");
+                                break;
+                            }
+                        case SAME_AS_BEFORE:
+                            prediction.setDose(testCase.getPreviousDose());
+                            prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
+                            prediction.addComments("Dose Change: CONTINUE AS BEFORE");
+                            break;
+                        case MAX_OF_PREV_AND_TOLERATED:{
+                            Dose max = Dose.maximumOf(testCase.getPreviousDose(), fallbackDose);
+                            prediction.setDose(max);
+                            prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
+                            if (max.equals(fallbackDose) && !max.equals(testCase.getDoseAt(-2)))
+                                prediction.addComments("Dose Change: DOSE RESET TO TOLERATED");
+                                break;
+                            }
+                        case INCREASE_6MP:{
+                            Dose max = Dose.maximumOf(testCase.calculateIncreasedDoseByPercent(Dose.STANDARD_INCREASE,0), fallbackDose);
+                            prediction.setDose(max);
+                            prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
+                            if (max.equals(fallbackDose))
+                                prediction.addComments("Dose Change: DOSE RESET TO TOLERATED");
+                            else
+                                prediction.addComments("Dose Change: INCREASE 6MP");
+                                break;
+                            }
+                        case INCREASE_MTX:
+                            prediction.setDose(testCase.calculateIncreasedDoseByPercent(0, Dose.STANDARD_INCREASE));
+                            prediction.setAppointmentAfterDays(2*WEEK, (Calendar)testCase.getCurrentDate().clone());
+                            prediction.addComments("Dose Change: INCREASE MTX");
+                            break;
+                        default:
+                            break;
+                    }
 		} catch (OutOfBoundsDoseException ex) {
 			DisplayMessage.displayMessage("Unexpectedly the algorithm tried to set out of bounds dose");
 			ex.printStackTrace();
