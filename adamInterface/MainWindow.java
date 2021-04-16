@@ -12,6 +12,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
@@ -38,6 +39,7 @@ public class MainWindow extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        dateComponentFormatter1 = new org.jdatepicker.impl.DateComponentFormatter();
         selectorPanel = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
         jButton1 = new javax.swing.JButton();
@@ -56,6 +58,7 @@ public class MainWindow extends javax.swing.JFrame {
         neutrophilText = new javax.swing.JTextField();
         plateletText = new javax.swing.JTextField();
         suggestDoseButton = new javax.swing.JButton();
+        date_chooser = new com.toedter.calendar.JDateChooser();
         hundredDosePanel = new javax.swing.JPanel();
         jLabel9 = new javax.swing.JLabel();
         jLabel10 = new javax.swing.JLabel();
@@ -180,6 +183,7 @@ public class MainWindow extends javax.swing.JFrame {
             .addGroup(currentVisitPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(currentVisitPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(date_chooser, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(suggestDoseButton)
                     .addGroup(currentVisitPanelLayout.createSequentialGroup()
                         .addGroup(currentVisitPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
@@ -194,7 +198,9 @@ public class MainWindow extends javax.swing.JFrame {
         currentVisitPanelLayout.setVerticalGroup(
             currentVisitPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(currentVisitPanelLayout.createSequentialGroup()
-                .addGap(24, 24, 24)
+                .addContainerGap()
+                .addComponent(date_chooser, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(currentVisitPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(currentVisitPanelLayout.createSequentialGroup()
                         .addComponent(neutrophilText, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -431,16 +437,37 @@ public class MainWindow extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
+    private void graphVisit(String patId,Patient pat) throws IOException, InterruptedException
+    {
+        Dose dosage= pat.getHunderedPercentDose();
+        double hundred_mtx=dosage.getMtx();
+        double hundred_smp=dosage.getSmp();
+        ProcessBuilder pb=new ProcessBuilder("python","./graph_visit.py",patId,Double.toString(hundred_mtx),Double.toString(hundred_smp));
+        Process p=pb.start();
+        p.waitFor();
+        
+        
+    }
+    
+    
     private void selectPatient(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_selectPatient
         String patId = patientIdText.getText();
 
         patientFilePath = "./Patients/" + patId + ".csv";
         try {
             patient = PatientInformationLoader.createPatient(patientFilePath);
+            
+            graphVisit(patId,patient);
+            
         } catch (IOException e) {
             JOptionPane.showMessageDialog(patientPanel, "Cannot find patient with Id: "+patId, "Patient Not Found", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
         }
+        catch (InterruptedException e){
+            JOptionPane.showMessageDialog(patientPanel, "Something went wrong, please try again.","System Interrupted", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
+        }
+        
         clearTextFields(patientPanel);
         populateFields(patient);
     }//GEN-LAST:event_selectPatient
@@ -518,6 +545,8 @@ public class MainWindow extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel currentVisitPanel;
+    private org.jdatepicker.impl.DateComponentFormatter dateComponentFormatter1;
+    private com.toedter.calendar.JDateChooser date_chooser;
     private javax.swing.JButton editButton;
     private javax.swing.JLabel graphLabel;
     private javax.swing.JPanel highestDosePanel;
@@ -557,6 +586,7 @@ public class MainWindow extends javax.swing.JFrame {
     private javax.swing.JButton suggestDoseButton;
     // End of variables declaration//GEN-END:variables
 
+    
     private void populateFields(Patient patient) {
         if (patient.getNumberOfVisits() == 0) {
             return;
@@ -571,13 +601,14 @@ public class MainWindow extends javax.swing.JFrame {
             jTextField7.setText(Double.toString(patient.getToleratedDose().getMtx()));
         }
         graphLabel.setPreferredSize(new Dimension(500, 350));
-        graphLabel.setIcon(new javax.swing.ImageIcon("2.jpg"));
+        graphLabel.setIcon(new javax.swing.ImageIcon(patient.getId()+".jpg"));
     }
 
     private void saveVisitToFile() {
         try {
             FileWriter outFileWriter = new FileWriter(patientFilePath, true);
-            String newEntry = String.join(",", String.valueOf(patient.getCycle()), dateFormatter.format(patient.getCurrentDate().getTime()),
+            Date date=date_chooser.getCalendar().getTime();
+            String newEntry = String.join(",", String.valueOf(patient.getCycle()), dateFormatter.format(date),
                             String.valueOf(patient.getBloodCounts().neutrophilCount/BloodCounts.NEUTROPHIL_UNIT),
                             String.valueOf(patient.getBloodCounts().plateletCount/BloodCounts.PLATELET_UNIT), 
                             String.valueOf(patient.getDoseAt(-1).getSmp()), String.valueOf(patient.getDoseAt(-1).getMtx()),
