@@ -87,6 +87,10 @@ public class Patient implements Cloneable {
 			}
 		}
 	}
+        
+        public String getId() {
+            return patientId;
+        }
 
 	public Dose getToleratedDose() {
 		return toleratedDose;

@@ -39,7 +39,6 @@ public class MainWindow extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        dateComponentFormatter1 = new org.jdatepicker.impl.DateComponentFormatter();
         selectorPanel = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
         jButton1 = new javax.swing.JButton();
@@ -437,18 +436,15 @@ public class MainWindow extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void graphVisit(String patId,Patient pat) throws IOException, InterruptedException
-    {
+    private void graphVisit(String patId,Patient pat) throws IOException, InterruptedException {
         Dose dosage= pat.getHunderedPercentDose();
-        double hundred_mtx=dosage.getMtx();
-        double hundred_smp=dosage.getSmp();
-        ProcessBuilder pb=new ProcessBuilder("python","./graph_visit.py",patId,Double.toString(hundred_mtx),Double.toString(hundred_smp));
+        double hundredMtx=dosage.getMtx();
+        double hundredSmp=dosage.getSmp();
+        ProcessBuilder pb=new ProcessBuilder("\\\\wsl$\\Ubuntu\\home\\mukund\\miniconda3\\bin\\python","./srcTushar/graph_visit.py",patId,Double.toString(hundredMtx),Double.toString(hundredSmp)).inheritIO();
         Process p=pb.start();
         p.waitFor();
-        
-        
+        JOptionPane.showMessageDialog(patientPanel, "Exit Value:"+ p.getErrorStream().toString(), "Exit Value", JOptionPane.ERROR_MESSAGE);
     }
-    
     
     private void selectPatient(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_selectPatient
         String patId = patientIdText.getText();
@@ -456,9 +452,7 @@ public class MainWindow extends javax.swing.JFrame {
         patientFilePath = "./Patients/" + patId + ".csv";
         try {
             patient = PatientInformationLoader.createPatient(patientFilePath);
-            
             graphVisit(patId,patient);
-            
         } catch (IOException e) {
             JOptionPane.showMessageDialog(patientPanel, "Cannot find patient with Id: "+patId, "Patient Not Found", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
@@ -491,7 +485,7 @@ public class MainWindow extends javax.swing.JFrame {
     private void suggestDoseButtonPressed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_suggestDoseButtonPressed
         BloodCounts bloodCount = new BloodCounts(Double.parseDouble(neutrophilText.getText())*BloodCounts.NEUTROPHIL_UNIT,
             Double.parseDouble(plateletText.getText())*BloodCounts.PLATELET_UNIT);
-        patient.addVisit(Calendar.getInstance().getTime(), bloodCount);
+        patient.addVisit(date_chooser.getCalendar().getTime(), bloodCount);
         prediction = new Predictor().predictFor(patient);
         jTextField10.setText(Double.toString(prediction.getDose().getSmp()));
         jTextField11.setText(Double.toString(prediction.getDose().getMtx()));
@@ -545,7 +539,6 @@ public class MainWindow extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel currentVisitPanel;
-    private org.jdatepicker.impl.DateComponentFormatter dateComponentFormatter1;
     private com.toedter.calendar.JDateChooser date_chooser;
     private javax.swing.JButton editButton;
     private javax.swing.JLabel graphLabel;
@@ -601,14 +594,15 @@ public class MainWindow extends javax.swing.JFrame {
             jTextField7.setText(Double.toString(patient.getToleratedDose().getMtx()));
         }
         graphLabel.setPreferredSize(new Dimension(500, 350));
-        graphLabel.setIcon(new javax.swing.ImageIcon(patient.getId()+".jpg"));
+        graphLabel.setIcon(new javax.swing.ImageIcon("./srcTushar/"+patient.getId()+".jpg"));
     }
 
     private void saveVisitToFile() {
         try {
             FileWriter outFileWriter = new FileWriter(patientFilePath, true);
             Date date=date_chooser.getCalendar().getTime();
-            String newEntry = String.join(",", String.valueOf(patient.getCycle()), dateFormatter.format(date),
+            String newEntry = String.join(",", String.valueOf(patient.getCycle()), 
+                            dateFormatter.format(patient.getCurrentDate().getTime()),
                             String.valueOf(patient.getBloodCounts().neutrophilCount/BloodCounts.NEUTROPHIL_UNIT),
                             String.valueOf(patient.getBloodCounts().plateletCount/BloodCounts.PLATELET_UNIT), 
                             String.valueOf(patient.getDoseAt(-1).getSmp()), String.valueOf(patient.getDoseAt(-1).getMtx()),

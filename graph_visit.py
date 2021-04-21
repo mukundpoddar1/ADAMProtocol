@@ -9,10 +9,12 @@ import sys
 plt.rcParams.update({'font.size': 9})
 
 # %%
+print('The file is running')
 patient_id = sys.argv[1]
 hundred_mtx = float(sys.argv[2])
 hundred_6mp = float(sys.argv[3])
-data = pd.read_csv(patient_id+'.csv', skiprows=4)
+print('The file is running', hundred_mtx, hundred_6mp)
+data = pd.read_csv('./Patients/'+patient_id+'.csv', skiprows=4)
 data['Current_date'] = pd.to_datetime(data['Current_date'], format='%d/%m/%Y')
 
 
@@ -44,4 +46,4 @@ ax2.set_ylabel('Dose')
 fig.autofmt_xdate()
 fig.legend(loc='upper center', ncol=3, shadow=True)
 fig.set_size_inches((5,3.5))
-fig.savefig(patient_id+'.jpg')
+fig.savefig('./srcTushar/'+patient_id+'.jpg')
