@@ -22,6 +22,7 @@ public class MainWindow extends javax.swing.JFrame {
     private String patientFilePath;
     private Prediction prediction;
     private final SimpleDateFormat dateFormatter;
+    private javax.swing.ImageIcon imageIcon;
     
     public MainWindow() {
         dateFormatter = new SimpleDateFormat("dd/MM/yyyy");
@@ -57,7 +58,7 @@ public class MainWindow extends javax.swing.JFrame {
         neutrophilText = new javax.swing.JTextField();
         plateletText = new javax.swing.JTextField();
         suggestDoseButton = new javax.swing.JButton();
-        date_chooser = new com.toedter.calendar.JDateChooser();
+        dateChooser = new com.toedter.calendar.JDateChooser();
         hundredDosePanel = new javax.swing.JPanel();
         jLabel9 = new javax.swing.JLabel();
         jLabel10 = new javax.swing.JLabel();
@@ -182,7 +183,7 @@ public class MainWindow extends javax.swing.JFrame {
             .addGroup(currentVisitPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(currentVisitPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(date_chooser, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(dateChooser, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(suggestDoseButton)
                     .addGroup(currentVisitPanelLayout.createSequentialGroup()
                         .addGroup(currentVisitPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
@@ -198,7 +199,7 @@ public class MainWindow extends javax.swing.JFrame {
             currentVisitPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(currentVisitPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(date_chooser, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(dateChooser, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(currentVisitPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(currentVisitPanelLayout.createSequentialGroup()
@@ -440,10 +441,9 @@ public class MainWindow extends javax.swing.JFrame {
         Dose dosage= pat.getHunderedPercentDose();
         double hundredMtx=dosage.getMtx();
         double hundredSmp=dosage.getSmp();
-        ProcessBuilder pb=new ProcessBuilder("\\\\wsl$\\Ubuntu\\home\\mukund\\miniconda3\\bin\\python","./srcTushar/graph_visit.py",patId,Double.toString(hundredMtx),Double.toString(hundredSmp)).inheritIO();
-        Process p=pb.start();
-        p.waitFor();
-        JOptionPane.showMessageDialog(patientPanel, "Exit Value:"+ p.getErrorStream().toString(), "Exit Value", JOptionPane.ERROR_MESSAGE);
+        ProcessBuilder pythonPB=new ProcessBuilder("python", "./srcTushar/graph_visit.py", patId,Double.toString(hundredMtx),Double.toString(hundredSmp)).inheritIO();
+        Process pythonProcess=pythonPB.start();
+        pythonProcess.waitFor();
     }
     
     private void selectPatient(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_selectPatient
@@ -485,13 +485,17 @@ public class MainWindow extends javax.swing.JFrame {
     private void suggestDoseButtonPressed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_suggestDoseButtonPressed
         BloodCounts bloodCount = new BloodCounts(Double.parseDouble(neutrophilText.getText())*BloodCounts.NEUTROPHIL_UNIT,
             Double.parseDouble(plateletText.getText())*BloodCounts.PLATELET_UNIT);
-        patient.addVisit(date_chooser.getCalendar().getTime(), bloodCount);
+        patient.addVisit(dateChooser.getCalendar().getTime(), bloodCount);
         prediction = new Predictor().predictFor(patient);
         jTextField10.setText(Double.toString(prediction.getDose().getSmp()));
         jTextField11.setText(Double.toString(prediction.getDose().getMtx()));
     }//GEN-LAST:event_suggestDoseButtonPressed
 
     public void clearTextFields(java.awt.Container container) {
+        graphLabel.setIcon(null);
+        if(imageIcon!=null)
+            imageIcon.getImage().flush();
+        graphLabel.setIcon(imageIcon);
         for (java.awt.Component c : container.getComponents()) {
             if (c instanceof javax.swing.JTextField) {
                 javax.swing.JTextField f = (javax.swing.JTextField) c;
@@ -539,7 +543,7 @@ public class MainWindow extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel currentVisitPanel;
-    private com.toedter.calendar.JDateChooser date_chooser;
+    private com.toedter.calendar.JDateChooser dateChooser;
     private javax.swing.JButton editButton;
     private javax.swing.JLabel graphLabel;
     private javax.swing.JPanel highestDosePanel;
@@ -594,13 +598,14 @@ public class MainWindow extends javax.swing.JFrame {
             jTextField7.setText(Double.toString(patient.getToleratedDose().getMtx()));
         }
         graphLabel.setPreferredSize(new Dimension(500, 350));
-        graphLabel.setIcon(new javax.swing.ImageIcon("./srcTushar/"+patient.getId()+".jpg"));
+        imageIcon = new javax.swing.ImageIcon("./srcTushar/"+patient.getId()+".jpg");
+        graphLabel.setIcon(imageIcon);
     }
 
     private void saveVisitToFile() {
         try {
             FileWriter outFileWriter = new FileWriter(patientFilePath, true);
-            Date date=date_chooser.getCalendar().getTime();
+            Date date=dateChooser.getCalendar().getTime();
             String newEntry = String.join(",", String.valueOf(patient.getCycle()), 
                             dateFormatter.format(patient.getCurrentDate().getTime()),
                             String.valueOf(patient.getBloodCounts().neutrophilCount/BloodCounts.NEUTROPHIL_UNIT),
