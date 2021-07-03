@@ -20,7 +20,7 @@ public class Dose implements Comparable<Dose>{
 
 	public static Dose roundOff(double mtx, double smp) {
 		try {
-			return new Dose(mtxStep*(Math.ceil(mtx/mtxStep)), smpStep*(Math.ceil(smp/smpStep)));
+			return new Dose(mtxStep*(Math.round(mtx/mtxStep)), smpStep*(Math.ceil(smp/smpStep)));
 		} catch (IndivisibleDoseException e) {
 			//This is never expected to execute because we are only creating rounded off doses by definition
 			return null;
@@ -83,7 +83,7 @@ public class Dose implements Comparable<Dose>{
 	public boolean is6mpPercentGreaterThanmtxPercent(Dose hunderedPercentDose) {
 		double percentageStep = Dose.STANDARD_INCREASE/100;
 		double smpPercentage = percentageStep*Math.floor(getSmp()/hunderedPercentDose.getSmp()/percentageStep);
-		double mtxPercentage = percentageStep*Math.floor(getMtx()/hunderedPercentDose.getMtx()/percentageStep);
+		double mtxPercentage = percentageStep*Math.round(getMtx()/hunderedPercentDose.getMtx()/percentageStep);
 		return (smpPercentage > mtxPercentage);
 	}
 }

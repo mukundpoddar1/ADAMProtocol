@@ -217,7 +217,7 @@ public class Patient implements Cloneable {
 		factor[0] = percentageStep * Math.floor(
 					(multipleDose.getSmp()-getHundredPercentDose().getSmp())/
 					getHundredPercentDose().getSmp()/ percentageStep);
-		factor[1] = percentageStep * Math.floor(
+		factor[1] = percentageStep * Math.round(
 					(multipleDose.getMtx()-getHundredPercentDose().getMtx())/
 					getHundredPercentDose().getMtx()/ percentageStep);
 		factor[0] += 1;
