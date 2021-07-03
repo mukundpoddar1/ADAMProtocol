@@ -1,6 +1,9 @@
 package adamProtocol;
 
 import adamProtocol.exceptions.OutOfBoundsDoseException;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -13,10 +16,10 @@ public class Patient implements Cloneable {
 	private final Calendar startDate = new GregorianCalendar();
 	private Calendar currentDate = new GregorianCalendar();
 	private Calendar nextAppointment = new GregorianCalendar();
-	private String patientId;
+	private final String patientId;
 	private final double height, weight;
 	private final double bsa;
-	private final Dose hunderedPercentDose;
+	private Dose hundredPercentDose;
 	private Dose toleratedDose;
 	private Vector<BloodCounts> bloodCounts;
 	private Vector<Dose> weeklyDose;
@@ -29,7 +32,7 @@ public class Patient implements Cloneable {
 		this.height = height;
 		this.weight = weight;
 		bsa=Math.sqrt(height * weight / 3600.0);
-		hunderedPercentDose=Dose.roundOff(bsa*20, bsa*60*7);
+		hundredPercentDose=Dose.roundOff(bsa*20, bsa*60*7);
 		toleratedDose = null;
 		bloodCounts = new Vector<>();
 		weeklyDose = new Vector<>();
@@ -63,13 +66,11 @@ public class Patient implements Cloneable {
 	}
 
 	private void setdaysSinceStart(Date recordDate) {
-		Calendar date = new GregorianCalendar();
-		date.setTime(recordDate);
-		long current = date.getTimeInMillis();
-		long start = startDate.getTimeInMillis();
-		int days = (int) TimeUnit.MILLISECONDS.toDays(Math.abs(current - start));
-
-		this.daysSinceStart.addElement(days);
+		LocalDate startInstant = startDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+		LocalDate recordInstant = recordDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+		long days = ChronoUnit.DAYS.between(startInstant, recordInstant);
+		
+		this.daysSinceStart.addElement((int)days);
 	}
 
 	private void setCount(BloodCounts bloodCounts) {
@@ -170,6 +171,10 @@ public class Patient implements Cloneable {
 		int week = getDaysSinceStart() / WEEK;
 		return week % 12 + 1;
 	}
+    
+    public void setHistoricalDose(Dose dose) {
+		this.weeklyDose.addElement(dose);
+	}
 
 	public Dose setCurrentDose(Dose curr) throws OutOfBoundsDoseException {
 		if (!this.isDoseWithinSafeLimit(curr))
@@ -181,19 +186,18 @@ public class Patient implements Cloneable {
 	}
 
 	public boolean isDoseWithinSafeLimit(Dose dose) {
-		double percentageStep = Dose.STANDARD_INCREASE/100;
-		double smpPercentage = percentageStep
-				* Math.round(dose.getSmp() / getHunderedPercentDose().getSmp() / percentageStep);
-		double mtxPercentage = percentageStep
-				* Math.round(dose.getMtx() / getHunderedPercentDose().getMtx() / percentageStep);
-
-		if (smpPercentage > Dose.SAFE_LIMIT || mtxPercentage > Dose.SAFE_LIMIT)
+		double factors[] = getIncreaseOverHundredPercentDose(dose);
+		if (factors[0] > Dose.SAFE_LIMIT || factors[1] > Dose.SAFE_LIMIT)
 			return false;
 		return true;
 	}
 
-	public Dose getHunderedPercentDose() {
-		return hunderedPercentDose;
+	public Dose getHundredPercentDose() {
+		return hundredPercentDose;
+	}
+
+	public void setHundredPercentDose(Dose newHundredDose) {
+		this.hundredPercentDose = newHundredDose;
 	}
 
 	public Calendar getCurrentDate() {
@@ -201,7 +205,24 @@ public class Patient implements Cloneable {
 	}
 
 	public Dose calculateIncreasedDoseByPercent(double smpPercent, double mtxPercent) {
-		return this.getPreviousDose().multiplyByPercentage(100+smpPercent, 100+mtxPercent);
+		double factors[] = getIncreaseOverHundredPercentDose(getPreviousDose());
+		Dose dose = getHundredPercentDose().multiplyByPercentage(factors[0]*100+smpPercent, factors[1]*100+mtxPercent);
+		return dose;
+	}
+	
+	private double[] getIncreaseOverHundredPercentDose(Dose multipleDose) {
+		double percentageStep = Dose.STANDARD_INCREASE/100;
+		//first element 6mp factor, second element MTX factor
+		double factor[] = new double[2];
+		factor[0] = percentageStep * Math.floor(
+					(multipleDose.getSmp()-getHundredPercentDose().getSmp())/
+					getHundredPercentDose().getSmp()/ percentageStep);
+		factor[1] = percentageStep * Math.floor(
+					(multipleDose.getMtx()-getHundredPercentDose().getMtx())/
+					getHundredPercentDose().getMtx()/ percentageStep);
+		factor[0] += 1;
+		factor[1] += 1;
+		return factor;
 	}
 
     public Date getLastVisitDate() {

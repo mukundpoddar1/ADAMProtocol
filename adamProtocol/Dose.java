@@ -6,7 +6,7 @@ import adamProtocol.exceptions.IndivisibleDoseException;
 public class Dose implements Comparable<Dose>{
 
 	private static final double mtxStep = 2.5, smpStep = 25;
-	public static final double SAFE_LIMIT = 1.60;
+	public static final double SAFE_LIMIT = 1.75;
 	public static final double STANDARD_INCREASE = 15;
 	private double mtx, smp;
 
@@ -20,11 +20,15 @@ public class Dose implements Comparable<Dose>{
 
 	public static Dose roundOff(double mtx, double smp) {
 		try {
-			return new Dose(mtxStep*(Math.round(mtx/mtxStep)), smpStep*(Math.round(smp/smpStep)));
+			return new Dose(mtxStep*(Math.ceil(mtx/mtxStep)), smpStep*(Math.ceil(smp/smpStep)));
 		} catch (IndivisibleDoseException e) {
 			//This is never expected to execute because we are only creating rounded off doses by definition
 			return null;
 		}
+	}
+	@Override
+	public String toString() {
+		return "6mp: "+Double.toString(smp)+", MTX: "+Double.toString(mtx);
 	}
 	/*This override is necessary as the default comparison just does a memory check
 	* It does not check whether the values are really equal
@@ -77,9 +81,9 @@ public class Dose implements Comparable<Dose>{
 	}
 
 	public boolean is6mpPercentGreaterThanmtxPercent(Dose hunderedPercentDose) {
-		double percentageStep = 0.125;
-		double smpPercentage = percentageStep*Math.round(getSmp()/hunderedPercentDose.getSmp()/percentageStep);
-		double mtxPercentage = percentageStep*Math.round(getMtx()/hunderedPercentDose.getMtx()/percentageStep);
+		double percentageStep = Dose.STANDARD_INCREASE/100;
+		double smpPercentage = percentageStep*Math.floor(getSmp()/hunderedPercentDose.getSmp()/percentageStep);
+		double mtxPercentage = percentageStep*Math.floor(getMtx()/hunderedPercentDose.getMtx()/percentageStep);
 		return (smpPercentage > mtxPercentage);
 	}
 }

@@ -19,9 +19,6 @@ import adamProtocol.Patient;
 import adamProtocol.Prediction;
 import adamProtocol.Predictor;
 import adamProtocol.Dose;
-import adamProtocol.exceptions.OutOfBoundsDoseException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 class PatientInformationLoader {
 	static Scanner scanInput;
@@ -43,7 +40,7 @@ class PatientInformationLoader {
 		double weight = Double.parseDouble(line.split(",")[1]);
 
 		// Read the header
-		line = br.readLine();
+		br.readLine();
 		Patient testCase = new Patient(startMTDate, id, height, weight);
 
 
@@ -62,12 +59,8 @@ class PatientInformationLoader {
 		BloodCounts bloodCount = new BloodCounts(Double.parseDouble(record.get(InputHeader.NEUTROPHIL))*BloodCounts.NEUTROPHIL_UNIT,
 		Double.parseDouble(record.get(InputHeader.PLATELET))*BloodCounts.PLATELET_UNIT);
 		testCase.addVisit(recordDate, bloodCount);
-            try {
-                testCase.setCurrentDose(Dose.roundOff(Double.parseDouble(record.get(InputHeader.MTX)),
-                        Double.parseDouble(record.get(InputHeader.SMP))));
-            } catch (OutOfBoundsDoseException ex) {
-                // Do nothing as this is the historical dose, so nothing can be altered
-            }
+        testCase.setHistoricalDose(Dose.roundOff(Double.parseDouble(record.get(InputHeader.MTX)), 
+				Double.parseDouble(record.get(InputHeader.SMP))));
 	}
 
 	private static Date getDate(String dateString) {

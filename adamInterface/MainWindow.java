@@ -11,10 +11,6 @@ import java.awt.Dimension;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.JOptionPane;
 
 public class MainWindow extends javax.swing.JFrame {
@@ -438,10 +434,10 @@ public class MainWindow extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void graphVisit(String patId,Patient pat) throws IOException, InterruptedException {
-        Dose dosage= pat.getHunderedPercentDose();
+        Dose dosage= pat.getHundredPercentDose();
         double hundredMtx=dosage.getMtx();
         double hundredSmp=dosage.getSmp();
-        ProcessBuilder pythonPB=new ProcessBuilder("python", "./srcTushar/graph_visit.py", patId,Double.toString(hundredMtx),Double.toString(hundredSmp)).inheritIO();
+        ProcessBuilder pythonPB=new ProcessBuilder("python", "./graph_visit.py", patId,Double.toString(hundredMtx),Double.toString(hundredSmp)).inheritIO();
         Process pythonProcess=pythonPB.start();
         pythonProcess.waitFor();
     }
@@ -591,21 +587,20 @@ public class MainWindow extends javax.swing.JFrame {
         jLabel11.setText(dateFormatter.format(patient.getLastVisitDate()) + ", Condition: "+patient.getBloodCountsAt(-1).condition);
         jTextField4.setText(Double.toString(patient.getDoseAt(-1).getSmp()));
         jTextField5.setText(Double.toString(patient.getDoseAt(-1).getMtx()));
-        jTextField8.setText(Double.toString(patient.getHunderedPercentDose().getSmp()));
-        jTextField9.setText(Double.toString(patient.getHunderedPercentDose().getMtx()));
+        jTextField8.setText(Double.toString(patient.getHundredPercentDose().getSmp()));
+        jTextField9.setText(Double.toString(patient.getHundredPercentDose().getMtx()));
         if (patient.getToleratedDose() != null) {
             jTextField6.setText(Double.toString(patient.getToleratedDose().getSmp()));
             jTextField7.setText(Double.toString(patient.getToleratedDose().getMtx()));
         }
         graphLabel.setPreferredSize(new Dimension(500, 350));
-        imageIcon = new javax.swing.ImageIcon("./srcTushar/"+patient.getId()+".jpg");
+        imageIcon = new javax.swing.ImageIcon("./Patients/"+patient.getId()+".jpg");
         graphLabel.setIcon(imageIcon);
     }
 
     private void saveVisitToFile() {
         try {
             FileWriter outFileWriter = new FileWriter(patientFilePath, true);
-            Date date=dateChooser.getCalendar().getTime();
             String newEntry = String.join(",", String.valueOf(patient.getCycle()), 
                             dateFormatter.format(patient.getCurrentDate().getTime()),
                             String.valueOf(patient.getBloodCounts().neutrophilCount/BloodCounts.NEUTROPHIL_UNIT),
