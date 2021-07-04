@@ -81,20 +81,13 @@ public class Predictor {
 		int attempts = 0;
 		while (visitNumber > 0) {
 			visitsOfStopDose = getVisitsOfStopDose(visitNumber);
+			// A failed attempt means at least 2 visits of stop dose.
 			if (visitsOfStopDose>=2) {
 				attempts+=1;
 				if (attempts>=2)
 					return false;
 			}
 			visitNumber -= visitsOfStopDose+1;
-//			Dose visitDose = testCase.getDoseAt(visitNumber);
-//			Dose previousVisitDose = testCase.getDoseAt(visitNumber-1);
-//			if (visitDose.compareTo(hundredPercentDose)<0 && previousVisitDose.compareTo(hundredPercentDose)>=0) {
-//				attempts+=1;
-//				if (attempts>=2)
-//					return false;
-//			}
-//			visitNumber -= 1;
 		}
 		return true;
 	}
